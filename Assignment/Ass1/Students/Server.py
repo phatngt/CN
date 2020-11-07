@@ -2,8 +2,7 @@ import sys, socket
 
 from ServerWorker import ServerWorker
 
-class Server:	
-	
+class Server:		
 	def main(self):
 		try:
 			SERVER_PORT = int(sys.argv[1])

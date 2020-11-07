@@ -42,7 +42,6 @@ class ServerWorker:
 		request = data.split('\n')
 		line1 = request[0].split(' ')
 		requestType = line1[0]
-		
 		# Get the media file name
 		filename = line1[1]
 		
@@ -63,12 +62,12 @@ class ServerWorker:
 				
 				# Generate a randomized RTSP session ID
 				self.clientInfo['session'] = randint(100000, 999999)
-				
+
 				# Send RTSP reply
 				self.replyRtsp(self.OK_200, seq[1])
-				
 				# Get the RTP/UDP port from the last line
 				self.clientInfo['rtpPort'] = request[2].split(' ')[3]
+				# print("clientInfo['rptPort']: {0}".format(self.clientInfo['rptPort']))
 		
 		# Process PLAY request 		
 		elif requestType == self.PLAY:
@@ -125,9 +124,9 @@ class ServerWorker:
 					self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
 				except:
 					print("Connection Error")
-					#print('-'*60)
-					#traceback.print_exc(file=sys.stdout)
-					#print('-'*60)
+					# print('-'*60)
+					# traceback.print_exc(file=sys.stdout)
+					# print('-'*60)
 
 	def makeRtp(self, payload, frameNbr):
 		"""RTP-packetize the video data."""
@@ -149,10 +148,10 @@ class ServerWorker:
 	def replyRtsp(self, code, seq):
 		"""Send RTSP reply to the client."""
 		if code == self.OK_200:
-			#print("200 OK")
+			print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
 			connSocket = self.clientInfo['rtspSocket'][0]
-			connSocket.send(reply.encode())
+			connSocket.send(reply.encode("utf-8"))
 		
 		# Error messages
 		elif code == self.FILE_NOT_FOUND_404:

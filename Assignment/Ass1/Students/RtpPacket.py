@@ -10,7 +10,7 @@ class RtpPacket:
 	def encode(self, version, padding, extension, cc, seqnum, marker, pt, ssrc, payload):
 		"""Encode the RTP packet with header fields and payload."""
 		timestamp = int(time())
-		header = bytearray(HEADER_SIZE)
+		self.header = bytearray(HEADER_SIZE)
 		#--------------
 		# TO COMPLETE
 		#--------------
@@ -18,19 +18,37 @@ class RtpPacket:
 		
 		# header[0] = ...
 		# ...
-		
+
+		# Version + P(padding) + X(extension) + CC	
+		self.header[0] = version << 6
+		self.header[0] = self.header[0] | padding << 5
+		self.header[0] = self.header[0] | extension << 4
+		self.header[0] = self.header[0] | cc
+
+		# M(Marker) +PT(Payload type)
+		self.header[1] = marker << 7
+		self.header[1] = self.header[1] | pt
+
+		# Sequence number
+		self.header[2] = (seqnum & 0xFF00) >> 8
+		self.header[3] = (seqnum & 0xFF)
+		#Timestamp
+		self.header[4] = (timestamp >> 24) & 0xFF
+		self.header[5] = (timestamp >> 16) & 0xFF
+		self.header[6] = (timestamp >> 8) & 0xFF
+		self.header[7] = timestamp & 0xFF
+
+		# ssrc(SSRC identifier)
+		self.header[8] = (ssrc >> 24) & 0xFF
+		self.header[9] = (ssrc >> 16) & 0xFF
+		self.header[10] = (ssrc >> 8) & 0xFF
+		self.header[11] = ssrc & 0xFF
+
+		print(self.header)
 		# Get the payload from the argument
 		# self.payload = ...
+		self.payload = payload
 
-		header[0] = version << 6
-		header[0] = header[0] | padding << 5
-		header[0] = header[0] | extension << 4
-		header[0] = header[0] | cc
-
-		header[1] = marker << 7
-		header[1] = header[1] | pt
-
-		header[2] = seqnum << 8		
 	def decode(self, byteStream):
 		"""Decode the RTP packet."""
 		self.header = bytearray(byteStream[:HEADER_SIZE])
@@ -62,7 +80,3 @@ class RtpPacket:
 	def getPacket(self):
 		"""Return RTP packet."""
 		return self.header + self.payload
-
-if __name__ == "__main__":
-    x = RtpPacket()
-    print(x.header)
