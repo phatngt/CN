@@ -215,7 +215,6 @@ class Client:
 		"""Parse the RTSP reply from the server."""
 		print("\nData recieve:\n" + data)
 		lines = data.split('\n')
-		print(lines)
 		seqNum = int(lines[1].split(' ')[1])
 		
 		# Process only if the server reply's sequence number is the same as the request's

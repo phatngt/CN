@@ -1,5 +1,4 @@
 import sys, socket
-
 from ServerWorker import ServerWorker
 
 class Server:		
@@ -16,7 +15,7 @@ class Server:
 		while True:
 			clientInfo = {}
 			clientInfo['rtspSocket'] = rtspSocket.accept()
-			ServerWorker(clientInfo).run()		
+			ServerWorker(clientInfo).run()
 
 if __name__ == "__main__":
 	(Server()).main()

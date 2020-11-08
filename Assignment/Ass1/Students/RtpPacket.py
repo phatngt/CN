@@ -43,8 +43,6 @@ class RtpPacket:
 		self.header[9] = (ssrc >> 16) & 0xFF
 		self.header[10] = (ssrc >> 8) & 0xFF
 		self.header[11] = ssrc & 0xFF
-
-		print(self.header)
 		# Get the payload from the argument
 		# self.payload = ...
 		self.payload = payload
