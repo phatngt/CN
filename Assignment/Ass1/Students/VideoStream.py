@@ -1,8 +1,10 @@
+import sys
 class VideoStream:
 	def __init__(self, filename):
 		self.filename = filename
 		try:
 			self.file = open(filename, 'rb')
+			self.filetemp = open(filename, 'rb')
 		except:
 			raise IOError
 		self.frameNum = 0
@@ -20,3 +22,6 @@ class VideoStream:
 	def frameNbr(self):
 		"""Get frame number."""
 		return self.frameNum
+	
+	def lenVideo(self):
+		return sys.getsizeof(self.filetemp.read())

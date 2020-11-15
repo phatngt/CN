@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 import socket, threading, sys, traceback, os,time
 
 from RtpPacket import RtpPacket
-
+from HandleInfo import HandleInfo
 CACHE_FILE_NAME = "cache-"
 CACHE_FILE_EXT = ".jpg"
 
@@ -40,7 +40,10 @@ class Client:
 		self.startTimePlay = 0
 		self.lengtTimeRecvPkg = 0
 		self.pkgRtpLoss = 0
-		
+		self.handleinfo = HandleInfo()
+		self.logtime = [0]
+		self.logbps = [00]
+		self.logbyte = [0]
 	def createWidgets(self):
 		"""Build GUI."""
 		# Create Setup button
@@ -80,7 +83,7 @@ class Client:
 
 		#Create a label to display statistic
 		self.ststic = Label(self.master,width=30)
-		self.ststic.grid(row=0,column=3,padx=5,pady=5)
+		self.ststic.grid(row=0,column=3,columnspan=2,padx=5,pady=5)
 	
 	def setupMovie(self):
 		"""Setup button handler."""
@@ -110,7 +113,7 @@ class Client:
 			self.sendRtspRequest(self.PLAY)
 	
 	def describeMedia(self):
-		if self.state == self.PLAYING or self.state == self.READY:
+		if self.state != self.INIT:
 			self.sendRtspRequest(self.DESCRIBE)
 
 	
@@ -121,10 +124,12 @@ class Client:
 				#Type of data is a byte object, with lenght 20480 byte
 
 				data = self.rtpSocket.recv(20480)
+				print(1)
 				# the time period between sending and receiving package
 				self.lengtTimeRecvPkg = time.time() - self.startTimePlay
 				#Update startTimePlay
 				self.startTimePlay = time.time()
+				self.logtime.append(self.logtime[-1]+self.lengtTimeRecvPkg)
 				if data:
 					rtpPacket = RtpPacket()
 					rtpPacket.decode(data)
@@ -143,10 +148,15 @@ class Client:
 				
 				# Upon receiving ACK for TEARDOWN request,
 				# close the RTP socket
-				if self.teardownAcked == 1:
+				elif self.teardownAcked == 1:
 					self.rtpSocket.shutdown(socket.SHUT_RDWR)
 					self.rtpSocket.close()
 					break
+				else:
+					# self.handleinfo.drawBytetoScnd(time=self.logtime,data=self.logbps,label='Times\nBytes to seconds')
+					self.handleinfo.drawByte(time=self.logtime,data=self.logbyte,label='Times\nBytes')
+					break
+
 					
 	def writeFrame(self, data):
 		"""Write the received frame to a temp image file. Return the image file."""
@@ -157,8 +167,10 @@ class Client:
 
 		#Get lenght of payload -- du lieu cua data nhan duoc thua 33 bytes so voi data gui qua rtsp
 		self.payloadLen += sys.getsizeof(data) - 33
+		self.logbyte.append(self.logbyte[-1]+self.payloadLen)
 		# Data bytes per seconds
 		dataratepersecond = (sys.getsizeof(data)-33)/self.lengtTimeRecvPkg
+		self.logbps.append(dataratepersecond)
 		self.ststic["text"] = "Total Bytes Received: {} bytes\nData Rate: {:.2f} bytes/s\nPackage loss: {}".format(self.payloadLen,dataratepersecond,self.pkgRtpLoss)
 		return cachename
 	
@@ -173,7 +185,6 @@ class Client:
 		self.rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		try:
 			self.rtspSocket.connect((self.serverAddr, self.serverPort))
-			print(self.sessionId)
 		except:
 			tkinter.messagebox.showwarning('Connection Failed', 'Connection to \'%s\' failed.' %self.serverAddr)
 	
@@ -236,7 +247,7 @@ class Client:
 			request = 'DESCRIBE ' + self.fileName + ' RTSP/1.0\nCSeq: ' + str(self.rtspSeq) + '\nSession: ' +str(self.sessionId)
 
 			#Keep track of the sent request
-			self.requestSent = self.DESCRIBE
+			self.requestSent = self.PAUSE
 		else:
 			return
 		
@@ -261,15 +272,19 @@ class Client:
 	
 	def parseRtspReply(self, data):
 		"""Parse the RTSP reply from the server."""
-		print("\nData recieve:\n" + data)
 		lines = data.split('\n')
-		print("lines: {0}".format(lines))
+		if len(lines) == 4:
+			datatemp = lines[:-1]
+			print("\nData recieve:\n")
+			for dt in datatemp:
+				print(dt)
+		else:
+			print("\nData recieve:\n",data)
 		seqNum = int(lines[1].split(' ')[1])
 		
 		# Process only if the server reply's sequence number is the same as the request's
 		if seqNum == self.rtspSeq:
 			session = int(lines[2].split(' ')[1])
-			print("session: {0}".format(session))
 			# New RTSP session ID
 			if self.sessionId == 0:
 				self.sessionId = session
@@ -324,3 +339,7 @@ class Client:
 			self.exitClient()
 		else: # When the user presses cancel, resume playing.
 			self.playMovie()
+	
+	def handleInfoDescribe(self,data):
+		info = data.split(' ')
+

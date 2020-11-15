@@ -25,6 +25,7 @@ class ServerWorker:
 	
 	def __init__(self, clientInfo):
 		self.clientInfo = clientInfo
+		self.filename = ''
 		
 	def run(self):
 		threading.Thread(target=self.recvRtspRequest).start()
@@ -42,12 +43,11 @@ class ServerWorker:
 		"""Process RTSP request sent from the client."""
 		# Get the request type
 		request = data.split('\n')
-		print(data)
 		line1 = request[0].split(' ')
 		requestType = line1[0]
 		# Get the media file name
 		filename = line1[1]
-		
+		self.filename = filename
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
 		
@@ -77,7 +77,7 @@ class ServerWorker:
 			if self.state == self.READY:
 				print("processing PLAY\n")
 				self.state = self.PLAYING
-				
+				print(1111111111)
 				# Create a new socket for RTP/UDP
 				self.clientInfo["rtpSocket"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 				
@@ -111,7 +111,10 @@ class ServerWorker:
 		
 		#Process DECRIBE request
 		elif requestType == self.DECRIBE:
-			print("processing DECRIBE\n")
+			if self.state == self.PLAYING:
+				print("processing PAUSE\n")
+				self.state = self.READY
+				self.clientInfo['event'].set()
 			self.replyRtsp(self.OK_200_DECR,seq[1])
 
 
@@ -160,9 +163,13 @@ class ServerWorker:
 			print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
 		elif code == self.OK_200_DECR:
-			pass
-		connSocket = self.clientInfo['rtspSocket'][0]
-		connSocket.send(reply.encode("utf-8"))
+			hostname = socket.gethostname()
+			host_ip_addr = socket.gethostbyname(hostname)
+			info = '\nvideo '+self.filename + ' '+ host_ip_addr + ' RTP/AVP MJPEG ' + str(self.clientInfo['videoStream'].lenVideo())
+			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + info
+		if reply:
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(reply.encode("utf-8"))
 		
 		# Error messages
 		if code == self.FILE_NOT_FOUND_404:
