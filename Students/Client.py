@@ -1,7 +1,7 @@
 from tkinter import *
 import tkinter.messagebox
 from PIL import Image, ImageTk
-import socket, threading, sys, traceback, os
+import socket, threading, sys, traceback, os,time
 
 from RtpPacket import RtpPacket
 
@@ -18,6 +18,8 @@ class Client:
 	PLAY = 1
 	PAUSE = 2
 	TEARDOWN = 3
+	DESCRIBE = 4
+
 	
 	# Initiation..
 	def __init__(self, master, serveraddr, serverport, rtpport, filename):
@@ -34,6 +36,10 @@ class Client:
 		self.teardownAcked = 0
 		self.connectToServer()
 		self.frameNbr = 0
+		self.payloadLen = 0
+		self.startTimePlay = 0
+		self.lengtTimeRecvPkg = 0
+		self.pkgRtpLoss = 0
 		
 	def createWidgets(self):
 		"""Build GUI."""
@@ -60,10 +66,21 @@ class Client:
 		self.teardown["text"] = "Teardown"
 		self.teardown["command"] =  self.exitClient
 		self.teardown.grid(row=1, column=3, padx=2, pady=2)
+
+		#Create Describe button
+		self.describe = Button(self.master, width = 20, padx=3, pady=3)
+		self.describe["text"] = "Describe"
+		self.describe["command"] = self.describeMedia
+		self.describe.grid(row=1, column=4, padx=2, pady=2)
+
 		
 		# Create a label to display the movie
 		self.label = Label(self.master, height=19)
-		self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
+		self.label.grid(row=0, column=0, columnspan=3, sticky=W+E+N+S, padx=5, pady=5) 
+
+		#Create a label to display statistic
+		self.ststic = Label(self.master,width=30)
+		self.ststic.grid(row=0,column=3,padx=5,pady=5)
 	
 	def setupMovie(self):
 		"""Setup button handler."""
@@ -84,18 +101,30 @@ class Client:
 	def playMovie(self):
 		"""Play button handler."""
 		if self.state == self.READY:
+			# Set time when button is pressed
+			self.startTimePlay = time.time()
 			# Create a new thread to listen for RTP packets
 			threading.Thread(target=self.listenRtp).start()
 			self.playEvent = threading.Event()
 			self.playEvent.clear()
 			self.sendRtspRequest(self.PLAY)
 	
+	def describeMedia(self):
+		if self.state == self.PLAYING or self.state == self.READY:
+			self.sendRtspRequest(self.DESCRIBE)
+
+	
 	def listenRtp(self):		
 		"""Listen for RTP packets."""
 		while True:
 			try:
 				#Type of data is a byte object, with lenght 20480 byte
+
 				data = self.rtpSocket.recv(20480)
+				# the time period between sending and receiving package
+				self.lengtTimeRecvPkg = time.time() - self.startTimePlay
+				#Update startTimePlay
+				self.startTimePlay = time.time()
 				if data:
 					rtpPacket = RtpPacket()
 					rtpPacket.decode(data)
@@ -104,6 +133,9 @@ class Client:
 					if currFrameNbr > self.frameNbr: # Discard the late packet
 						self.frameNbr = currFrameNbr
 						self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
+				else:
+					self.pkgRtpLoss += 1
+
 			except:
 				# Stop listening upon requesting PAUSE or TEARDOWN
 				if self.playEvent.isSet(): 
@@ -122,7 +154,12 @@ class Client:
 		file = open(cachename, "wb")
 		file.write(data)
 		file.close()
-		
+
+		#Get lenght of payload -- du lieu cua data nhan duoc thua 33 bytes so voi data gui qua rtsp
+		self.payloadLen += sys.getsizeof(data) - 33
+		# Data bytes per seconds
+		dataratepersecond = (sys.getsizeof(data)-33)/self.lengtTimeRecvPkg
+		self.ststic["text"] = "Total Bytes Received: {} bytes\nData Rate: {:.2f} bytes/s\nPackage loss: {}".format(self.payloadLen,dataratepersecond,self.pkgRtpLoss)
 		return cachename
 	
 	def updateMovie(self, imageFile):
@@ -136,6 +173,7 @@ class Client:
 		self.rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		try:
 			self.rtspSocket.connect((self.serverAddr, self.serverPort))
+			print(self.sessionId)
 		except:
 			tkinter.messagebox.showwarning('Connection Failed', 'Connection to \'%s\' failed.' %self.serverAddr)
 	
@@ -189,6 +227,16 @@ class Client:
 			
 			# Keep track of the sent request.
 			self.requestSent = self.TEARDOWN
+		# Describe request
+		elif requestCode == self.DESCRIBE and not self.state == self.INIT:
+			# Update RTSP sequence number.
+			self.rtspSeq +=1
+
+			#Write RTSP request to be sent
+			request = 'DESCRIBE ' + self.fileName + ' RTSP/1.0\nCSeq: ' + str(self.rtspSeq) + '\nSession: ' +str(self.sessionId)
+
+			#Keep track of the sent request
+			self.requestSent = self.DESCRIBE
 		else:
 			return
 		
@@ -215,11 +263,13 @@ class Client:
 		"""Parse the RTSP reply from the server."""
 		print("\nData recieve:\n" + data)
 		lines = data.split('\n')
+		print("lines: {0}".format(lines))
 		seqNum = int(lines[1].split(' ')[1])
 		
 		# Process only if the server reply's sequence number is the same as the request's
 		if seqNum == self.rtspSeq:
 			session = int(lines[2].split(' ')[1])
+			print("session: {0}".format(session))
 			# New RTSP session ID
 			if self.sessionId == 0:
 				self.sessionId = session

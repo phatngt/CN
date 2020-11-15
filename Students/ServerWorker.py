@@ -9,6 +9,7 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
+	DECRIBE = 'DESCRIBE'
 	
 	INIT = 0
 	READY = 1
@@ -18,6 +19,7 @@ class ServerWorker:
 	OK_200 = 0
 	FILE_NOT_FOUND_404 = 1
 	CON_ERR_500 = 2
+	OK_200_DECR = 3
 	
 	clientInfo = {}
 	
@@ -40,6 +42,7 @@ class ServerWorker:
 		"""Process RTSP request sent from the client."""
 		# Get the request type
 		request = data.split('\n')
+		print(data)
 		line1 = request[0].split(' ')
 		requestType = line1[0]
 		# Get the media file name
@@ -105,7 +108,13 @@ class ServerWorker:
 			
 			# Close the RTP socket
 			self.clientInfo['rtpSocket'].close()
-			
+		
+		#Process DECRIBE request
+		elif requestType == self.DECRIBE:
+			print("processing DECRIBE\n")
+			self.replyRtsp(self.OK_200_DECR,seq[1])
+
+
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
 		while True:
@@ -150,11 +159,13 @@ class ServerWorker:
 		if code == self.OK_200:
 			print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
-			connSocket = self.clientInfo['rtspSocket'][0]
-			connSocket.send(reply.encode("utf-8"))
+		elif code == self.OK_200_DECR:
+			pass
+		connSocket = self.clientInfo['rtspSocket'][0]
+		connSocket.send(reply.encode("utf-8"))
 		
 		# Error messages
-		elif code == self.FILE_NOT_FOUND_404:
+		if code == self.FILE_NOT_FOUND_404:
 			print("404 NOT FOUND")
 		elif code == self.CON_ERR_500:
 			print("500 CONNECTION ERROR")
