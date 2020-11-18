@@ -77,7 +77,6 @@ class ServerWorker:
 			if self.state == self.READY:
 				print("processing PLAY\n")
 				self.state = self.PLAYING
-				print(1111111111)
 				# Create a new socket for RTP/UDP
 				self.clientInfo["rtpSocket"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 				
@@ -165,7 +164,7 @@ class ServerWorker:
 		elif code == self.OK_200_DECR:
 			hostname = socket.gethostname()
 			host_ip_addr = socket.gethostbyname(hostname)
-			info = '\nvideo '+self.filename + ' '+ host_ip_addr + ' RTP/AVP MJPEG ' + str(self.clientInfo['videoStream'].lenVideo())
+			info = '\nType Stream: video\tName: '+self.filename + '\tServer Adress: '+ host_ip_addr + '\tProtocol: RTP/AVP Video\tFormat: MJPEG\tLenght video: ' + str(self.clientInfo['videoStream'].lenVideo())
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + info
 		if reply:
 			connSocket = self.clientInfo['rtspSocket'][0]

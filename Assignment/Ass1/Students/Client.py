@@ -124,7 +124,6 @@ class Client:
 				#Type of data is a byte object, with lenght 20480 byte
 
 				data = self.rtpSocket.recv(20480)
-				print(1)
 				# the time period between sending and receiving package
 				self.lengtTimeRecvPkg = time.time() - self.startTimePlay
 				#Update startTimePlay
@@ -154,7 +153,7 @@ class Client:
 					break
 				else:
 					# self.handleinfo.drawBytetoScnd(time=self.logtime,data=self.logbps,label='Times\nBytes to seconds')
-					self.handleinfo.drawByte(time=self.logtime,data=self.logbyte,label='Times\nBytes')
+					# self.handleinfo.drawByte(time=self.logtime,data=self.logbyte,label='Times\nBytes')
 					break
 
 					
@@ -275,6 +274,7 @@ class Client:
 		lines = data.split('\n')
 		if len(lines) == 4:
 			datatemp = lines[:-1]
+			self.handleinfo.writeFile(lines[-1])
 			print("\nData recieve:\n")
 			for dt in datatemp:
 				print(dt)
@@ -306,7 +306,8 @@ class Client:
 						self.state = self.READY
 						
 						# The play thread exits. A new thread is created on resume.
-						self.playEvent.set()
+						if self.state == self.PLAYING:
+							self.playEvent.set()
 					elif self.requestSent == self.TEARDOWN:
 						self.state = self.INIT
 						
@@ -328,7 +329,7 @@ class Client:
 		try:
 			# Bind the socket to the address using the RTP port given by the client user
 			# ...
-			self.rtpSocket.bind((self.serverAddr,self.rtpPort))
+			self.rtpSocket.bind(('',self.rtpPort))
 		except:
 			tkinter.messagebox.showwarning('Unable to Bind', 'Unable to bind PORT=%d' %self.rtpPort)
 
