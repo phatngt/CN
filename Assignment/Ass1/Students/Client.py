@@ -39,10 +39,10 @@ class Client:
 		self.payloadLen = 0
 		self.startTimePlay = 0
 		self.lengtTimeRecvPkg = 0
-		self.pkgRtpLoss = 0
+		self.pkgRtpRecv = 0
 		self.handleinfo = HandleInfo()
 		self.logtime = [0]
-		self.logbps = [00]
+		self.logbps = [0]
 		self.logbyte = [0]
 	def createWidgets(self):
 		"""Build GUI."""
@@ -137,9 +137,8 @@ class Client:
 					if currFrameNbr > self.frameNbr: # Discard the late packet
 						self.frameNbr = currFrameNbr
 						self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
-				else:
-					self.pkgRtpLoss += 1
-
+						self.pkgRtpRecv += 1
+					
 			except:
 				# Stop listening upon requesting PAUSE or TEARDOWN
 				if self.playEvent.isSet(): 
@@ -154,6 +153,10 @@ class Client:
 				else:
 					# self.handleinfo.drawBytetoScnd(time=self.logtime,data=self.logbps,label='Times\nBytes to seconds')
 					# self.handleinfo.drawByte(time=self.logtime,data=self.logbyte,label='Times\nBytes')
+					# print('-'*60)
+					# traceback.print_exc(file=sys.stdout)
+					# print('-'*60)
+					print(self.pkgRtpRecv)
 					break
 
 					
@@ -170,12 +173,13 @@ class Client:
 		# Data bytes per seconds
 		dataratepersecond = (sys.getsizeof(data)-33)/self.lengtTimeRecvPkg
 		self.logbps.append(dataratepersecond)
-		self.ststic["text"] = "Total Bytes Received: {} bytes\nData Rate: {:.2f} bytes/s\nPackage loss: {}".format(self.payloadLen,dataratepersecond,self.pkgRtpLoss)
+		self.ststic["text"] = "Total Bytes Received: {} bytes\nData Rate: {:.2f} bytes/s\nPackage loss: {}".format(self.payloadLen,dataratepersecond,self.pkgRtpRecv)
 		return cachename
 	
 	def updateMovie(self, imageFile):
 		"""Update the image file as video frame in the GUI."""
 		photo = ImageTk.PhotoImage(Image.open(imageFile))
+		print(imageFile)
 		self.label.configure(image = photo, height=288) 
 		self.label.image = photo
 		
